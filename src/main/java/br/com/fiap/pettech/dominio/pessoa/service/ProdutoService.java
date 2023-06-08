@@ -13,7 +13,6 @@ import java.util.UUID;
 @Service
 public class ProdutoService {
 
-    @Qualifier("produtoRepository")
     @Autowired
     private IProdutoRepository repo;
 
