@@ -1,4 +1,4 @@
-package br.com.fiap.pettech.dominio.pessoa.produto;
+package br.com.fiap.pettech.dominio.produto.entitie;
 
 import jakarta.persistence.*;
 
@@ -18,8 +18,7 @@ public class Produto {
     private double preco;
 
 
-    public Produto(UUID id) {
-        this.id = id;
+    public Produto() {
     }
 
     public Produto(String nome, String descricao, String urlImagem, double preco) {
