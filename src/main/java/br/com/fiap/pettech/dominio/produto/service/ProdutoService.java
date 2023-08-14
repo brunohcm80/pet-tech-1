@@ -1,5 +1,8 @@
 package br.com.fiap.pettech.dominio.produto.service;
 
+import br.com.fiap.pettech.dominio.categoria.dto.CategoriaDTO;
+import br.com.fiap.pettech.dominio.categoria.entity.Categoria;
+import br.com.fiap.pettech.dominio.categoria.repository.ICategoriaRepository;
 import br.com.fiap.pettech.dominio.produto.entitie.Produto;
 import br.com.fiap.pettech.dominio.produto.dto.ProdutoDTO;
 import br.com.fiap.pettech.dominio.produto.repository.IProdutoRepository;
@@ -12,6 +15,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -21,43 +25,38 @@ public class ProdutoService {
     @Autowired
     private IProdutoRepository repo;
 
+    @Autowired
+    private ICategoriaRepository categoriaRepo;
+
+    @Transactional(readOnly = true)
     public Page<ProdutoDTO> findAll(PageRequest pagina) {
         var produtos = repo.findAll(pagina);
 
-        return produtos.map(prod -> new ProdutoDTO(prod));
+        return produtos.map(prod -> new ProdutoDTO(prod, prod.getCategorias()));
     }
 
+    @Transactional(readOnly = true)
     public ProdutoDTO findById(UUID id){
         var produto = repo.findById(id).orElseThrow(() -> new ControllerNotFoundException("Produto nao encontrado"));
 
-        return new ProdutoDTO(produto);
+        return new ProdutoDTO(produto, produto.getCategorias());
     }
 
+    @Transactional
     public ProdutoDTO save (ProdutoDTO produto){
         Produto entity = new Produto ();
-
-        entity.setNome(produto.getNome());
-        entity.setDescricao(produto.getDescricao());
-        entity.setPreco(produto.getPreco());
-        entity.setUrlImagem(produto.getUrlImagem());
-
+        mapperDtoToEntity(produto, entity);
         var produtoSaved = repo.save(entity);
-
-        return new ProdutoDTO(produtoSaved);
+        return new ProdutoDTO(produtoSaved, produtoSaved.getCategorias());
     }
 
+    @Transactional
     public ProdutoDTO update(UUID id, ProdutoDTO produto){
         try {
-            Produto buscaProduto = repo.getOne(id);
-
-            buscaProduto.setNome(produto.getNome());
-            buscaProduto.setDescricao(produto.getDescricao());
-            buscaProduto.setUrlImagem(produto.getUrlImagem());
-            buscaProduto.setPreco(produto.getPreco());
-
-            buscaProduto = repo.save(buscaProduto);
-
-            return new ProdutoDTO(buscaProduto);
+            Produto entity = repo.getOne(id);
+            mapperDtoToEntity(produto, entity);
+            var produtoAtualizado = repo.save(entity);
+            return new ProdutoDTO(produtoAtualizado, produtoAtualizado.getCategorias());
         } catch (EntityNotFoundException e){
             throw new ControllerNotFoundException("Produto nao Encontrado");
 
@@ -72,6 +71,19 @@ public class ProdutoService {
             throw new EntityNotFoundException("Entity not found with ID:" + id);
         } catch (DataIntegrityViolationException e) {
             throw new DatabaseException("Violação de integridade da base");
+        }
+    }
+
+    private void mapperDtoToEntity(ProdutoDTO dto, Produto entity) {
+        entity.setNome(dto.getNome());
+        entity.setPreco(dto.getPreco());
+        entity.setUrlImagem(dto.getUrlImagem());
+        entity.setDescricao(dto.getDescricao());
+        entity.getCategorias().clear();
+
+        for (CategoriaDTO categoriaDto:dto.getCategorias()) {
+            Categoria categoria = categoriaRepo.getOne(categoriaDto.getId());
+            entity.getCategorias().add(categoria);
         }
     }
 }
